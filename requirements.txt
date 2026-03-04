@@ -10,6 +10,7 @@ torchvision==0.20.1
 
 # Machine Learning
 scikit-learn==1.3.2
+xgboost==2.0.3
 
 # YOLO (supports both v5 and v8)
 ultralytics==8.1.0
