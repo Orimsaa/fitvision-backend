@@ -47,9 +47,13 @@ def engineer_squat_features(f: dict) -> list:
 
 
 # ── Model loader ───────────────────────────────────────────────────────────────
-@lru_cache(maxsize=1)
-def get_models():
-    models = {}
+@lru_cache(maxsize=2)
+def get_model(name: str):
+    """
+    Lazy loads a single model into memory.
+    maxsize=2 ensures we don't exceed the 512MB memory limit on Render Free Tier.
+    Only the requested exercise's model is kept in RAM.
+    """
     paths = {
         "exercise":       MODELS_DIR / "exercise_classifier.pkl",
         "deadlift_form":  MODELS_DIR / "deadlift_form.pkl",
@@ -57,22 +61,23 @@ def get_models():
         "squat_detailed": MODELS_DIR / "squat_form_detailed.pkl",
         "benchpress_form":MODELS_DIR / "benchpress_form.pkl",
     }
-    for name, path in paths.items():
-        if path.exists():
-            models[name] = joblib.load(path)
-            print(f"  [OK] {name}")
-        else:
-            print(f"  [WARN] Not found: {path}")
-    return models
+    path = paths.get(name)
+    if path and path.exists():
+        print(f"[FitVision] 🧠 Lazy Loading Model '{name}' into memory...")
+        m = joblib.load(path)
+        print(f"[FitVision] ✅ Model '{name}' loaded successfully!")
+        return m
+    else:
+        print(f"[FitVision] ❌ WARN: Model not found at {path}")
+        return None
 
 
 # ── Predict functions ──────────────────────────────────────────────────────────
 def predict_exercise(features: list) -> dict:
-    models = get_models()
-    if "exercise" not in models:
+    m = get_model("exercise")
+    if not m:
         return {"exercise": "unknown", "confidence": 0}
 
-    m   = models["exercise"]
     X   = np.array(features).reshape(1, -1)
     idx = m["model"].predict(X)[0]
     proba = m["model"].predict_proba(X)[0]
@@ -84,11 +89,10 @@ def predict_exercise(features: list) -> dict:
 
 
 def predict_deadlift(features: list) -> dict:
-    models = get_models()
-    if "deadlift_form" not in models:
+    m = get_model("deadlift_form")
+    if not m:
         return {"form_correct": True, "confidence": 0, "feedback": "Model not loaded"}
 
-    m     = models["deadlift_form"]
     X     = np.array(features).reshape(1, -1)
     pred  = m["model"].predict(X)[0]
     proba = m["model"].predict_proba(X)[0]
@@ -102,8 +106,9 @@ def predict_deadlift(features: list) -> dict:
 
 
 def predict_squat(squat_features: dict) -> dict:
-    models = get_models()
-    if "squat_binary" not in models or "squat_detailed" not in models:
+    bm = get_model("squat_binary")
+    dm = get_model("squat_detailed")
+    if not bm or not dm:
         return {"form_correct": True, "confidence": 0,
                 "error_type": "Correct", "feedback": "Model not loaded"}
 
@@ -111,12 +116,10 @@ def predict_squat(squat_features: dict) -> dict:
     X = np.array(feat_vec).reshape(1, -1)
 
     # Binary: correct or not
-    bm      = models["squat_binary"]
     b_pred  = bm["model"].predict(X)[0]
     b_proba = bm["model"].predict_proba(X)[0]
 
     # Detailed: which error
-    dm      = models["squat_detailed"]
     d_pred  = dm["model"].predict(X)[0]
     d_proba = dm["model"].predict_proba(X)[0]
 
@@ -134,11 +137,10 @@ def predict_squat(squat_features: dict) -> dict:
 
 
 def predict_benchpress(features: list) -> dict:
-    models = get_models()
-    if "benchpress_form" not in models:
+    m = get_model("benchpress_form")
+    if not m:
         return {"form_correct": True, "confidence": 0, "feedback": "Model not loaded"}
 
-    m     = models["benchpress_form"]
     X     = np.array(features).reshape(1, -1)
     
     # m["model"] is our VotingClassifier

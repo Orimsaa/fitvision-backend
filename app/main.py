@@ -12,7 +12,7 @@ import sys
 sys.path.append(str(Path(__file__).parent.parent))
 
 from app.schemas import Features13, SquatFeatures, ExercisePrediction, FormPrediction
-from app.predictor import predict_exercise, predict_deadlift, predict_squat, predict_benchpress, get_models
+from app.predictor import predict_exercise, predict_deadlift, predict_squat, predict_benchpress
 
 app = FastAPI(title="FitVision API", version="2.0")
 
@@ -32,8 +32,7 @@ if WEB_DIR.exists():
 # ── Startup ───────────────────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup():
-    print("\n[FitVision] Loading models...")
-    get_models()
+    print("\n[FitVision] API Starting up. Models will be lazy-loaded on demand to save memory.")
     print("[FitVision] Ready!\n")
 
 # ── Routes ────────────────────────────────────────────────────────────────────
