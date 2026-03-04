@@ -1,0 +1,10 @@
+{
+  "filename": "conv_ehe_46",
+  "exercise": "deadlift",
+  "deadlift_type": "conventional",
+  "form_correct": false,
+  "error_types": [
+    "excessive_hip_extension"
+  ],
+  "risk_level": "medium"
+}

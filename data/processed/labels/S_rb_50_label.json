@@ -1,0 +1,12 @@
+{
+  "filename": "S_rb_50.mp4",
+  "exercise": "deadlift",
+  "deadlift_type": "sumo",
+  "form_correct": false,
+  "error_types": [
+    "rounded_back"
+  ],
+  "risk_level": "high",
+  "notes": "Auto-labeled from filename",
+  "source": "Raw MP4 Videos"
+}

@@ -1,0 +1,10 @@
+{
+  "filename": "S_ehe_31",
+  "exercise": "deadlift",
+  "deadlift_type": "sumo",
+  "form_correct": false,
+  "error_types": [
+    "excessive_hip_extension"
+  ],
+  "risk_level": "medium"
+}

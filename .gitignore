@@ -76,3 +76,6 @@ data/processed/*
 # Logs
 *.log
 logs/
+data/raw/  
+*.mp4  
+catboost_info/  

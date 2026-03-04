@@ -1,0 +1,12 @@
+{
+  "filename": "S_oe_10.mp4",
+  "exercise": "deadlift",
+  "deadlift_type": "sumo",
+  "form_correct": false,
+  "error_types": [
+    "over_extension"
+  ],
+  "risk_level": "medium",
+  "notes": "Auto-labeled from filename",
+  "source": "Raw MP4 Videos"
+}

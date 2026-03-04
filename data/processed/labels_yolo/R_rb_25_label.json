@@ -1,0 +1,10 @@
+{
+  "filename": "R_rb_25",
+  "exercise": "deadlift",
+  "deadlift_type": "romanian",
+  "form_correct": false,
+  "error_types": [
+    "rounded_back"
+  ],
+  "risk_level": "high"
+}

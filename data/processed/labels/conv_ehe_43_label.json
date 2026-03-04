@@ -1,0 +1,12 @@
+{
+  "filename": "conv_ehe_43.mp4",
+  "exercise": "deadlift",
+  "deadlift_type": "conventional",
+  "form_correct": false,
+  "error_types": [
+    "excessive_hip_extension"
+  ],
+  "risk_level": "medium",
+  "notes": "Auto-labeled from filename",
+  "source": "Raw MP4 Videos"
+}

@@ -1,0 +1,10 @@
+{
+  "filename": "conv_oe_16",
+  "exercise": "deadlift",
+  "deadlift_type": "conventional",
+  "form_correct": false,
+  "error_types": [
+    "over_extension"
+  ],
+  "risk_level": "medium"
+}

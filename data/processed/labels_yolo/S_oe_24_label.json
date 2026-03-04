@@ -1,0 +1,10 @@
+{
+  "filename": "S_oe_24",
+  "exercise": "deadlift",
+  "deadlift_type": "sumo",
+  "form_correct": false,
+  "error_types": [
+    "over_extension"
+  ],
+  "risk_level": "medium"
+}

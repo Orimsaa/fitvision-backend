@@ -1,0 +1,12 @@
+{
+  "filename": "conv_rb_15.mp4",
+  "exercise": "deadlift",
+  "deadlift_type": "conventional",
+  "form_correct": false,
+  "error_types": [
+    "rounded_back"
+  ],
+  "risk_level": "high",
+  "notes": "Auto-labeled from filename",
+  "source": "Raw MP4 Videos"
+}

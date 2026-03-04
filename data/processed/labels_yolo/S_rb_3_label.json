@@ -1,0 +1,10 @@
+{
+  "filename": "S_rb_3",
+  "exercise": "deadlift",
+  "deadlift_type": "sumo",
+  "form_correct": false,
+  "error_types": [
+    "rounded_back"
+  ],
+  "risk_level": "high"
+}
