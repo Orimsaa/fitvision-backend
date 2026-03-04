@@ -5,7 +5,7 @@ Loads and runs all exercise models
 import numpy as np
 import joblib
 from pathlib import Path
-from functools import lru_cache
+import gc
 import sys
 
 sys.path.append(str(Path(__file__).parent.parent))
@@ -47,13 +47,28 @@ def engineer_squat_features(f: dict) -> list:
 
 
 # ── Model loader ───────────────────────────────────────────────────────────────
-@lru_cache(maxsize=2)
-def get_model(name: str):
+_current_exercise = None
+_active_models = {}
+
+def get_exercise_models(exercise: str):
     """
-    Lazy loads a single model into memory.
-    maxsize=2 ensures we don't exceed the 512MB memory limit on Render Free Tier.
-    Only the requested exercise's model is kept in RAM.
+    Strict Memory Management for Render 512MB RAM Limit.
+    Loads ONLY the models needed for the requested explicitly.
+    If a different exercise is requested, it purges the old models from RAM and forces Garbage Collection.
     """
+    global _current_exercise, _active_models
+    
+    # If same exercise, return the cached models
+    if _current_exercise == exercise and _active_models:
+        return _active_models
+        
+    print(f"\n[FitVision] 🧹 RAM Cleanup: Evicting models for '{_current_exercise}'...")
+    _active_models.clear()
+    gc.collect() # Force free unused RAM immediately
+    
+    _current_exercise = exercise
+    print(f"[FitVision] 🧠 Loading models for '{exercise}' into RAM...")
+    
     paths = {
         "exercise":       MODELS_DIR / "exercise_classifier.pkl",
         "deadlift_form":  MODELS_DIR / "deadlift_form.pkl",
@@ -61,20 +76,25 @@ def get_model(name: str):
         "squat_detailed": MODELS_DIR / "squat_form_detailed.pkl",
         "benchpress_form":MODELS_DIR / "benchpress_form.pkl",
     }
-    path = paths.get(name)
-    if path and path.exists():
-        print(f"[FitVision] 🧠 Lazy Loading Model '{name}' into memory...")
-        m = joblib.load(path)
-        print(f"[FitVision] ✅ Model '{name}' loaded successfully!")
-        return m
-    else:
-        print(f"[FitVision] ❌ WARN: Model not found at {path}")
-        return None
+    
+    if exercise == "squat":
+        if paths["squat_binary"].exists(): _active_models["squat_binary"] = joblib.load(paths["squat_binary"])
+        if paths["squat_detailed"].exists(): _active_models["squat_detailed"] = joblib.load(paths["squat_detailed"])
+    elif exercise == "deadlift":
+        if paths["deadlift_form"].exists(): _active_models["deadlift_form"] = joblib.load(paths["deadlift_form"])
+    elif exercise == "benchpress":
+        if paths["benchpress_form"].exists(): _active_models["benchpress_form"] = joblib.load(paths["benchpress_form"])
+    elif exercise == "classifier":
+        if paths["exercise"].exists(): _active_models["exercise"] = joblib.load(paths["exercise"])
+        
+    print(f"[FitVision] ✅ Model swap complete. RAM is optimized.")
+    return _active_models
 
 
 # ── Predict functions ──────────────────────────────────────────────────────────
 def predict_exercise(features: list) -> dict:
-    m = get_model("exercise")
+    models = get_exercise_models("classifier")
+    m = models.get("exercise")
     if not m:
         return {"exercise": "unknown", "confidence": 0}
 
@@ -89,7 +109,8 @@ def predict_exercise(features: list) -> dict:
 
 
 def predict_deadlift(features: list) -> dict:
-    m = get_model("deadlift_form")
+    models = get_exercise_models("deadlift")
+    m = models.get("deadlift_form")
     if not m:
         return {"form_correct": True, "confidence": 0, "feedback": "Model not loaded"}
 
@@ -106,8 +127,9 @@ def predict_deadlift(features: list) -> dict:
 
 
 def predict_squat(squat_features: dict) -> dict:
-    bm = get_model("squat_binary")
-    dm = get_model("squat_detailed")
+    models = get_exercise_models("squat")
+    bm = models.get("squat_binary")
+    dm = models.get("squat_detailed")
     if not bm or not dm:
         return {"form_correct": True, "confidence": 0,
                 "error_type": "Correct", "feedback": "Model not loaded"}
@@ -137,7 +159,8 @@ def predict_squat(squat_features: dict) -> dict:
 
 
 def predict_benchpress(features: list) -> dict:
-    m = get_model("benchpress_form")
+    models = get_exercise_models("benchpress")
+    m = models.get("benchpress_form")
     if not m:
         return {"form_correct": True, "confidence": 0, "feedback": "Model not loaded"}
 
