@@ -1,0 +1,24 @@
+# fly.toml — FitVision Backend
+# Generated for Fly.io deployment
+
+app = "fitvision-backend"
+primary_region = "sin"  # Singapore — closest to Thailand
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true   # Sleep when idle (saves cost)
+  auto_start_machines = true  # Wake up on request
+  min_machines_running = 0    # Allow sleeping (free tier)
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 25
+    hard_limit = 50
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"            # Upgrade to 512MB for safety; still cheap (~$2/mo)

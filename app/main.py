@@ -45,11 +45,14 @@ async def index():
 
 @app.get("/health")
 async def health():
-    models = get_models()
+    from pathlib import Path
+    models_dir = Path(__file__).parent.parent / "data" / "models"
+    model_files = [f.name for f in models_dir.glob("*.pkl")] if models_dir.exists() else []
     return {
         "status": "ok",
-        "models": list(models.keys()),
+        "models": model_files,
     }
+
 
 @app.post("/predict/exercise", response_model=ExercisePrediction)
 async def predict_exercise_endpoint(body: Features13):

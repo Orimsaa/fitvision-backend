@@ -1,0 +1,16 @@
+# ── FitVision Backend — Lean Deploy Requirements ──────────────────────────────
+# Only what the FastAPI /predict endpoints actually need at runtime.
+# Heavy packages (torch, mediapipe, ultralytics, streamlit, etc.) are excluded.
+
+# Web Framework
+fastapi>=0.104.1
+uvicorn>=0.24.0
+
+# Data + ML inference
+numpy>=1.24.3
+joblib>=1.3.0
+scikit-learn==1.3.2
+xgboost==2.0.3
+
+# Utils
+pyyaml==6.0.1
