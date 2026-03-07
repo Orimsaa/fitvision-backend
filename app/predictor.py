@@ -46,6 +46,120 @@ def engineer_squat_features(f: dict) -> list:
             avg_knee, avg_hip, knee_hip_ratio, knee_depth,
             ankle_asym, hip_asym, total_lat, lean_con]
 
+# ── Model loader ───────────────────────────────────────────────────────────────
+_current_exercise = None
+_active_models = {}
+
+def _force_free_memory():
+    """Aggressively free memory back to the OS."""
+    gc.collect()
+    gc.collect()
+    try:
+        import ctypes
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except Exception:
+        pass
+
+def _log_memory():
+    """Log current memory usage for debugging OOM."""
+    try:
+        import os
+        rss = os.popen('cat /proc/self/status | grep VmRSS').read().strip()
+        if rss:
+            print(f"[FitVision] 📊 {rss}")
+    except Exception:
+        pass
+
+def _evict_all_models():
+    """Purge all loaded models from RAM."""
+    global _current_exercise, _active_models
+    for key in list(_active_models.keys()):
+        obj = _active_models.pop(key)
+        del obj
+    _active_models.clear()
+    _current_exercise = None
+    _force_free_memory()
+
+def _load_single_model(path):
+    """Load a single model file, with memory logging."""
+    _log_memory()
+    print(f"[FitVision] 📦 Loading {path.name}...")
+    model = joblib.load(path)
+    _log_memory()
+    return model
+
+def get_exercise_models(exercise: str):
+    """
+    Strict Memory Management for 512MB RAM Limit.
+    Squat is handled separately to load models sequentially.
+    """
+    global _current_exercise, _active_models
+    
+    if _current_exercise == exercise and _active_models:
+        return _active_models
+    
+    print(f"\n[FitVision] 🧹 RAM Cleanup: Evicting models for '{_current_exercise}'...")
+    _evict_all_models()
+    
+    _current_exercise = exercise
+    
+    paths = {
+        "exercise":       MODELS_DIR / "exercise_classifier.pkl",
+        "deadlift_form":  MODELS_DIR / "deadlift_form.pkl",
+        "benchpress_form":MODELS_DIR / "benchpress_form.pkl",
+    }
+    
+    try:
+        if exercise == "deadlift":
+            if paths["deadlift_form"].exists():
+                _active_models["deadlift_form"] = _load_single_model(paths["deadlift_form"])
+        elif exercise == "benchpress":
+            if paths["benchpress_form"].exists():
+                _active_models["benchpress_form"] = _load_single_model(paths["benchpress_form"])
+        elif exercise == "classifier":
+            if paths["exercise"].exists():
+                _active_models["exercise"] = _load_single_model(paths["exercise"])
+    except MemoryError:
+        print(f"[FitVision] ❌ MemoryError loading '{exercise}'!")
+        _evict_all_models()
+        return {}
+        
+    print(f"[FitVision] ✅ Model swap complete.")
+    return _active_models
+
+# ── Predict functions ──────────────────────────────────────────────────────────
+def predict_exercise(features: list) -> dict:
+    models = get_exercise_models("classifier")
+    m = models.get("exercise")
+    if not m:
+        return {"exercise": "unknown", "confidence": 0}
+
+    X   = np.array(features).reshape(1, -1)
+    idx = m["model"].predict(X)[0]
+    proba = m["model"].predict_proba(X)[0]
+
+    return {
+        "exercise":   EXERCISE_MAP.get(idx, "unknown"),
+        "confidence": float(proba[idx]),
+    }
+
+def predict_deadlift(features: list) -> dict:
+    models = get_exercise_models("deadlift")
+    m = models.get("deadlift_form")
+    if not m:
+        return {"form_correct": True, "confidence": 0, "feedback": "Model not loaded"}
+
+    X     = np.array(features).reshape(1, -1)
+    pred  = m["model"].predict(X)[0]
+    proba = m["model"].predict_proba(X)[0]
+    conf  = float(proba[pred])
+
+    return {
+        "form_correct": bool(pred),
+        "confidence":   conf,
+        "feedback": "Good form! Keep it up" if pred else "Check your form",
+    }
+
 def predict_squat(squat_features: dict) -> dict:
     """
     ⚡ MEMORY-OPTIMIZED ML SQUAT PREDICTION ⚡
