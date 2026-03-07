@@ -175,8 +175,25 @@ def predict_squat(squat_features: dict) -> dict:
     # First, evict any other models from RAM
     _evict_all_models()
     
+    # ── DEBUG: Log raw features from frontend ──
+    print(f"\n[FitVision] 🔍 SQUAT DEBUG — Raw features from frontend:")
+    for k, v in squat_features.items():
+        print(f"  {k:25s} = {v:.4f}")
+    
     feat_vec = engineer_squat_features(squat_features)
     X = np.array(feat_vec).reshape(1, -1)
+    
+    # ── DEBUG: Log engineered features ──
+    feat_names = [
+        'left_knee_angle', 'right_knee_angle', 'left_hip_angle', 'right_hip_angle',
+        'left_ankle_angle', 'right_ankle_angle', 'spine_angle', 'torso_lean',
+        'left_knee_lateral', 'right_knee_lateral', 'symmetry_score', 'hip_depth',
+        'avg_knee', 'avg_hip', 'knee_hip_ratio', 'knee_depth',
+        'ankle_asym', 'hip_asym', 'total_lat', 'lean_con'
+    ]
+    print(f"[FitVision] 🔍 Engineered feature vector ({len(feat_vec)} features):")
+    for name, val in zip(feat_names, feat_vec):
+        print(f"  {name:25s} = {val:.4f}")
     
     squat_binary_path   = MODELS_DIR / "squat_form.pkl"
     squat_detailed_path = MODELS_DIR / "squat_form_detailed.pkl"
@@ -215,6 +232,9 @@ def predict_squat(squat_features: dict) -> dict:
     
     form_correct = b_pred == 0
     error_label  = SQUAT_ERROR_MAP.get(d_pred, "Unknown")
+    
+    print(f"[FitVision] 🔍 RESULT: b_pred={b_pred}, b_proba={[f'{p:.3f}' for p in b_proba]}, form_correct={form_correct}")
+    print(f"[FitVision] 🔍 RESULT: d_pred={d_pred}, error={error_label}")
     
     _log_memory()
     
