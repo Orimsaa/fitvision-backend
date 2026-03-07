@@ -50,22 +50,53 @@ def engineer_squat_features(f: dict) -> list:
 _current_exercise = None
 _active_models = {}
 
+def _force_free_memory():
+    """Aggressively free memory back to the OS."""
+    gc.collect()
+    gc.collect()  # Double collect to catch cyclic references
+    try:
+        import ctypes
+        ctypes.CDLL("libc.so.6").malloc_trim(0)  # Linux: force release to OS
+    except Exception:
+        pass
+
+def _log_memory():
+    """Log current memory usage for debugging OOM."""
+    try:
+        import os
+        rss = os.popen('cat /proc/self/status | grep VmRSS').read().strip()
+        if rss:
+            print(f"[FitVision] 📊 {rss}")
+    except Exception:
+        pass
+
 def get_exercise_models(exercise: str):
     """
-    Strict Memory Management for Render 512MB RAM Limit.
-    Loads ONLY the models needed for the requested explicitly.
-    If a different exercise is requested, it purges the old models from RAM and forces Garbage Collection.
+    Strict Memory Management for Koyeb 512MB RAM Limit.
+    Loads ONLY the models needed for the requested exercise.
+    Aggressively purges old models and forces OS-level memory release before loading new ones.
     """
     global _current_exercise, _active_models
     
     # If same exercise, return the cached models
     if _current_exercise == exercise and _active_models:
         return _active_models
-        
-    print(f"\n[FitVision] 🧹 RAM Cleanup: Evicting models for '{_current_exercise}'...")
-    _active_models.clear()
-    gc.collect() # Force free unused RAM immediately
     
+    # ── Step 1: Aggressively free old models ──
+    print(f"\n[FitVision] 🧹 RAM Cleanup: Evicting models for '{_current_exercise}'...")
+    _log_memory()
+    
+    # Explicitly delete each model object first (breaks references)
+    for key in list(_active_models.keys()):
+        obj = _active_models.pop(key)
+        del obj
+    _active_models.clear()
+    
+    # Force memory back to OS before loading new model
+    _force_free_memory()
+    _log_memory()
+    
+    # ── Step 2: Load new models ──
     _current_exercise = exercise
     print(f"[FitVision] 🧠 Loading models for '{exercise}' into RAM...")
     
@@ -77,16 +108,30 @@ def get_exercise_models(exercise: str):
         "benchpress_form":MODELS_DIR / "benchpress_form.pkl",
     }
     
-    if exercise == "squat":
-        if paths["squat_binary"].exists(): _active_models["squat_binary"] = joblib.load(paths["squat_binary"])
-        if paths["squat_detailed"].exists(): _active_models["squat_detailed"] = joblib.load(paths["squat_detailed"])
-    elif exercise == "deadlift":
-        if paths["deadlift_form"].exists(): _active_models["deadlift_form"] = joblib.load(paths["deadlift_form"])
-    elif exercise == "benchpress":
-        if paths["benchpress_form"].exists(): _active_models["benchpress_form"] = joblib.load(paths["benchpress_form"])
-    elif exercise == "classifier":
-        if paths["exercise"].exists(): _active_models["exercise"] = joblib.load(paths["exercise"])
+    try:
+        if exercise == "squat":
+            if paths["squat_binary"].exists():
+                _active_models["squat_binary"] = joblib.load(paths["squat_binary"])
+                _log_memory()
+            if paths["squat_detailed"].exists():
+                _active_models["squat_detailed"] = joblib.load(paths["squat_detailed"])
+        elif exercise == "deadlift":
+            if paths["deadlift_form"].exists():
+                _active_models["deadlift_form"] = joblib.load(paths["deadlift_form"])
+        elif exercise == "benchpress":
+            if paths["benchpress_form"].exists():
+                _active_models["benchpress_form"] = joblib.load(paths["benchpress_form"])
+        elif exercise == "classifier":
+            if paths["exercise"].exists():
+                _active_models["exercise"] = joblib.load(paths["exercise"])
+    except MemoryError:
+        print(f"[FitVision] ❌ MemoryError loading '{exercise}'! Clearing all models...")
+        _active_models.clear()
+        _force_free_memory()
+        _current_exercise = None
+        return {}
         
+    _log_memory()
     print(f"[FitVision] ✅ Model swap complete. RAM is optimized.")
     return _active_models
 
