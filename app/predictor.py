@@ -23,8 +23,64 @@ SQUAT_ERROR_MAP = {
 
 EXERCISE_MAP = {0: "benchpress", 1: "squat", 2: "deadlift"}
 
-# ── Feature engineering (must match train_squat_model_v2.py) ──────────────────
+# ── Feature engineering (must match retrain_squat_deploy.py v6) ────────────────
+
+# Approximate statistics of features as computed by the FRONTEND 
+# (estimated from debug output during real webcam usage)
+FRONTEND_STATS = {
+    'left_knee_angle':    {'mean': 115.0, 'std': 55.0},  # range ~60-170
+    'right_knee_angle':   {'mean': 114.0, 'std': 50.0},  # range ~65-164
+    'left_hip_angle':     {'mean': 116.0, 'std': 60.0},  # range ~57-175
+    'right_hip_angle':    {'mean': 102.0, 'std': 52.0},  # range ~50-154
+    'left_ankle_angle':   {'mean': 148.0, 'std': 5.0},   # range ~140-155
+    'right_ankle_angle':  {'mean': 132.0, 'std': 5.0},   # range ~128-136
+    'spine_angle':        {'mean': 13.5,  'std': 6.5},   # range ~7-20
+    'torso_lean':         {'mean': 13.5,  'std': 6.5},   # = spine_angle
+    'left_knee_lateral':  {'mean': 0.03,  'std': 0.02},  # range ~0-0.04
+    'right_knee_lateral': {'mean': 0.02,  'std': 0.01},  # range ~0-0.03
+    'symmetry_score':     {'mean': 27.0,  'std': 15.0},  # range ~12-41
+    'hip_depth':          {'mean': 0.63,  'std': 0.12},  # range ~0.51-0.75 
+}
+
+# Statistics FROM the Kaggle training CSV (computed by debug_squat_ranges.py)
+KAGGLE_STATS = {
+    'left_knee_angle':    {'mean': 67.74,  'std': 43.87},
+    'right_knee_angle':   {'mean': 64.96,  'std': 41.91},
+    'left_hip_angle':     {'mean': 88.20,  'std': 49.27},
+    'right_hip_angle':    {'mean': 87.96,  'std': 49.89},
+    'left_ankle_angle':   {'mean': 42.46,  'std': 18.08},
+    'right_ankle_angle':  {'mean': 41.78,  'std': 17.11},
+    'spine_angle':        {'mean': 84.85,  'std': 49.22},
+    'torso_lean':         {'mean': 99.99,  'std': 12.35},
+    'left_knee_lateral':  {'mean': 0.10,   'std': 0.05},
+    'right_knee_lateral': {'mean': 0.09,   'std': 0.05},
+    'symmetry_score':     {'mean': 13.22,  'std': 13.53},
+    'hip_depth':          {'mean': 0.59,   'std': 0.08},
+}
+
+def _transform_to_kaggle_range(f: dict) -> dict:
+    """
+    Transform frontend features to match Kaggle training data distribution.
+    Uses z-score normalization: z = (x - frontend_mean) / frontend_std
+    Then maps to Kaggle space: kaggle_x = z * kaggle_std + kaggle_mean
+    """
+    transformed = {}
+    for key, val in f.items():
+        if key in FRONTEND_STATS and key in KAGGLE_STATS:
+            fs = FRONTEND_STATS[key]
+            ks = KAGGLE_STATS[key]
+            # z-score normalize from frontend → map to Kaggle
+            z = (val - fs['mean']) / (fs['std'] + 1e-8)
+            transformed[key] = z * ks['std'] + ks['mean']
+        else:
+            transformed[key] = val
+    return transformed
+
 def engineer_squat_features(f: dict) -> list:
+    """Full 20-feature extraction matching the v6 training script."""
+    # First transform frontend features to Kaggle range
+    f = _transform_to_kaggle_range(f)
+    
     lk = f["left_knee_angle"];  rk = f["right_knee_angle"]
     lh = f["left_hip_angle"];   rh = f["right_hip_angle"]
     la = f["left_ankle_angle"]; ra = f["right_ankle_angle"]
@@ -183,7 +239,7 @@ def predict_squat(squat_features: dict) -> dict:
     feat_vec = engineer_squat_features(squat_features)
     X = np.array(feat_vec).reshape(1, -1)
     
-    # ── DEBUG: Log engineered features ──
+    # ── DEBUG: Log transformed features ──
     feat_names = [
         'left_knee_angle', 'right_knee_angle', 'left_hip_angle', 'right_hip_angle',
         'left_ankle_angle', 'right_ankle_angle', 'spine_angle', 'torso_lean',
@@ -191,7 +247,7 @@ def predict_squat(squat_features: dict) -> dict:
         'avg_knee', 'avg_hip', 'knee_hip_ratio', 'knee_depth',
         'ankle_asym', 'hip_asym', 'total_lat', 'lean_con'
     ]
-    print(f"[FitVision] 🔍 Engineered feature vector ({len(feat_vec)} features):")
+    print(f"[FitVision] 🔍 TRANSFORMED features ({len(feat_vec)} → Kaggle range):")
     for name, val in zip(feat_names, feat_vec):
         print(f"  {name:25s} = {val:.4f}")
     
