@@ -103,9 +103,10 @@ def predict_squat_rules(f: dict) -> dict:
     
     # === 5. Asymmetry Check ===
     # symmetry_score = |left_knee - right_knee| + |left_hip - right_hip|
-    if sy > 35:
+    # Note: hip angles vary a lot due to camera angle, so threshold is high
+    if sy > 70:
         errors.append((5, "Asymmetric — ทั้งสองข้างไม่สมมาตร", 0.85))
-    elif sy > 25:
+    elif sy > 50:
         errors.append((5, "Asymmetric — ทั้งสองข้างไม่สมมาตร", 0.65))
     
     # === Determine result ===
